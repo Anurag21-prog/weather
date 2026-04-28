@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SkyCast | Modern Weather</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .glass {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        body {
+            transition: background 0.8s ease;
+            background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+        }
+        .weather-hot { background: linear-gradient(135deg, #f59e0b, #ef4444); }
+        .weather-cold { background: linear-gradient(135deg, #3b82f6, #1e40af); }
+        .weather-rain { background: linear-gradient(135deg, #4b5563, #1f2937); }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-6">
+
+    <div class="glass w-full max-w-lg rounded-3xl p-8 shadow-2xl text-white">
+        <div class="relative mb-10">
+            <input type="text" id="cityInput" placeholder="Search City..." 
+                class="w-full bg-white/20 border-none rounded-2xl py-4 px-6 text-white placeholder-white/60 focus:ring-2 focus:ring-white/50 outline-none text-lg">
+            <button onclick="fetchWeather()" class="absolute right-3 top-2.5 bg-white text-blue-600 p-2.5 rounded-xl hover:bg-blue-50 transition">
+                <i class="fa-solid fa-magnifying-glass text-xl"></i>
+            </button>
+        </div>
+
+        <div id="placeholder" class="text-center py-10">
+            <i class="fa-solid fa-cloud-sun text-7xl mb-4 opacity-50"></i>
+            <p class="text-xl opacity-70">Enter a city to see the magic</p>
+        </div>
+
+        <div id="weatherDisplay" class="hidden animate-in fade-in duration-700">
+            <div class="text-center">
+                <h1 id="cityName" class="text-5xl font-bold mb-1">London</h1>
+                <p id="country" class="text-xl opacity-80 mb-4">UK</p>
+                
+                <img id="wIcon" src="" alt="icon" class="mx-auto w-32">
+                
+                <div class="my-4">
+                    <span id="temp" class="text-8xl font-black">22</span><span class="text-4xl">°C</span>
+                </div>
+                <p id="description" class="text-2xl capitalize tracking-wide font-light mb-8">Partly Cloudy</p>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div class="glass rounded-2xl p-4 flex items-center gap-4">
+                    <i class="fa-solid fa-temperature-half text-2xl text-orange-300"></i>
+                    <div>
+                        <p class="text-xs opacity-70 uppercase">Feels Like</p>
+                        <p id="feelsLike" class="text-lg font-bold">24°C</p>
+                    </div>
+                </div>
+                <div class="glass rounded-2xl p-4 flex items-center gap-4">
+                    <i class="fa-solid fa-droplet text-2xl text-blue-300"></i>
+                    <div>
+                        <p class="text-xs opacity-70 uppercase">Humidity</p>
+                        <p id="humidity" class="text-lg font-bold">45%</p>
+                    </div>
+                </div>
+                <div class="glass rounded-2xl p-4 flex items-center gap-4">
+                    <i class="fa-solid fa-wind text-2xl text-teal-300"></i>
+                    <div>
+                        <p class="text-xs opacity-70 uppercase">Wind Speed</p>
+                        <p id="wind" class="text-lg font-bold">12 km/h</p>
+                    </div>
+                </div>
+                <div class="glass rounded-2xl p-4 flex items-center gap-4">
+                    <i class="fa-solid fa-eye text-2xl text-purple-300"></i>
+                    <div>
+                        <p class="text-xs opacity-70 uppercase">Condition</p>
+                        <p id="condition" class="text-lg font-bold">Clear</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <p id="error" class="hidden text-red-200 bg-red-500/20 p-3 rounded-lg text-center mt-4"></p>
+    </div>
+
+    <script>
+        async function fetchWeather() {
+            const city = document.getElementById('cityInput').value;
+            const errorElement = document.getElementById('error');
+            const display = document.getElementById('weatherDisplay');
+            const placeholder = document.getElementById('placeholder');
+
+            if (!city) return;
+
+            try {
+                const response = await fetch('/get_weather', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ city: city })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    // Update UI
+                    document.getElementById('cityName').innerText = data.name;
+                    document.getElementById('country').innerText = data.country;
+                    document.getElementById('temp').innerText = data.temp;
+                    document.getElementById('feelsLike').innerText = `${data.feels_like}°C`;
+                    document.getElementById('humidity').innerText = `${data.humidity}%`;
+                    document.getElementById('wind').innerText = `${data.wind} m/s`;
+                    document.getElementById('description').innerText = data.description;
+                    document.getElementById('condition').innerText = data.condition;
+                    document.getElementById('wIcon').src = `https://openweathermap.org/img/wn/${data.icon}@4x.png`;
+
+                    // Dynamic Background
+                    document.body.className = 'min-h-screen flex items-center justify-center p-6';
+                    if (data.temp > 25) document.body.classList.add('weather-hot');
+                    else if (data.temp < 10) document.body.classList.add('weather-cold');
+                    if (data.condition === 'Rain') document.body.classList.add('weather-rain');
+
+                    placeholder.classList.add('hidden');
+                    display.classList.remove('hidden');
+                    errorElement.classList.add('hidden');
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (err) {
+                errorElement.innerText = err.message;
+                errorElement.classList.remove('hidden');
+                display.classList.add('hidden');
+            }
+        }
+
+        // Allow "Enter" key to search
+        document.getElementById('cityInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') fetchWeather();
+        });
+    </script>
+</body>
+</html>
